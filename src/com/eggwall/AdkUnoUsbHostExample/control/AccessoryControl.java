@@ -17,9 +17,19 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 /**
- * Encapsulates all control of the USB accessory.  This class can be used inside a service (as demonstrated here)
- * or in an Activity.  The
+ * <p>
+ * Encapsulates all control of the USB accessory.  This class can be used inside a service
+ * or in an Activity (as demonstrated here).  To create a control object, provide a context (Activity or Service context
+ * is fine).  You must call the lifecycle methods in order.  First you must call {@link #onCreate()} immediately
+ * after creating the object.  Through an activity, you must call {@link #onResume()} to get back a handle to the
+ * Accessory.  You can query the control object to see if it is connected by calling {@link #isConnected}
+ *</p>
+ * <p>You can register a single {@link com.eggwall.AdkUnoUsbHostExample.control.AccessoryControl.ConnectedListener}</p>
+ * to receive changes to connection status and messages from the Arduino device.
+ * <p>Finally, to send messages, you can call {@link #sendMessage(byte)} with a byte that is transmitted to the
+ * Arduino device which must be equipped with the correct code to handle the messages.</p>
  *
+ * <p>
  * Adk Sample: connects Android and Arduino using Accessory Developer Kit (ADK)
  * Copyright (C) 2016  Vikram Aggarwal
  *
@@ -36,6 +46,7 @@ import java.io.IOException;
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * </p>
  */
 public class AccessoryControl {
     /** Set this to true to get more information at runtime */
@@ -132,18 +143,28 @@ public class AccessoryControl {
                 Log.d(TAG, "mAccessory is null");
         }
     }
-    
+
+    /** Returns true if a USB accessory is currently connected. */
     public boolean isConnected() {
         return mConnected;
     }
 
+    /**
+     * A listener that received connectivity changes and incoming messages.
+     */
     public interface ConnectedListener {
         /** Delivered when a connection change takes place. */
         public void onConnectionChange(boolean connectionStatus);
-
+        /** Delivered when a message is received from the Arduino device. */
         public void onMessageReceived(byte[] message);
     }
 
+    /**
+     * Sends a message to the Arduino device.
+     * @param message to be sent
+     * @return true if sending was successful.  This is no guarantee of delivery on the Arduino since there could also
+     * be failure at the Arduino to receive the message.
+     */
     public boolean sendMessage(byte message) {
         if (mOutputStream != null) {
             try {
@@ -159,13 +180,27 @@ public class AccessoryControl {
 
     private ConnectedListener mConnectionListener = null;
 
+    /**
+     * Registers a single listener.  If a listener was already registers, this method fails and returns false.  In such
+     * cases, call {@link #unregisterConnectedListener()} first.
+     * @param l a listener
+     * @return true if a listener was registered.
+     */
     public boolean registerConnectedListener(ConnectedListener l) {
         if (mConnectionListener != null) {
             // Did not register a listener, a listener exists
             return false;
         }
+        // Registers a listener.
         mConnectionListener = l;
         return true;
+    }
+
+    /**
+     * Unregisters any listener from receiving messages.
+     */
+    public void unregisterConnectedListener() {
+        mConnectionListener = null;
     }
 
     private void openAccessory(UsbAccessory accessory) {

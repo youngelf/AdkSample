@@ -43,6 +43,11 @@ public class AccessoryActivity extends Activity {
     AccessoryControl mControl;
     DeviceListener mListener = null;
 
+    /**
+     * An example listener.  This listens to messages to print out the message received.  It also
+     * updates connectivity status on the UI.  If these callbacks were not modifying the UI, you wouldn't
+     * need to run on UI thread.
+     */
     class DeviceListener implements AccessoryControl.ConnectedListener{
         final Activity mActivity;
 
@@ -52,6 +57,7 @@ public class AccessoryActivity extends Activity {
 
         @Override
         public void onConnectionChange(final boolean connectionStatus) {
+            // Switch back to the UI thread to modify the UI.
             mActivity.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
@@ -62,6 +68,7 @@ public class AccessoryActivity extends Activity {
 
         @Override
         public void onMessageReceived(final byte[] message) {
+            // Switch back to the UI thread to modify the UI.
             mActivity.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
@@ -96,6 +103,7 @@ public class AccessoryActivity extends Activity {
 
     @Override
     public void onBackPressed() {
+        // Kill this activity.
         finish();
     }
 
@@ -109,8 +117,13 @@ public class AccessoryActivity extends Activity {
         mConnectionStatusView.setText(connected ? "Connected" : "Disconnected");
     }
 
+    /**
+     * Handles button press.  This method is defined in the layout.xml file, and must be public and must have the
+     * signature provided here
+     * @param v the view element that was tapped.
+     */
     public void blinkLED(View v) {
-        byte buffer = (byte) ((((ToggleButton) v).isChecked()) ? 1 : 0); // Read button
+        byte buffer = (byte) ((((ToggleButton) v).isChecked()) ? 1 : 0);
         mControl.sendMessage(buffer);
     }
 
