@@ -6,7 +6,6 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 import com.eggwall.AdkUnoUsbHostExample.control.AccessoryControl;
-import com.eggwall.AdkUnoUsbHostExample.R;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
