@@ -1,0 +1,52 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:1.5.0'
+    }
+}
+
+apply plugin: 'com.android.application'
+
+repositories {
+    jcenter()
+}
+
+android {
+    compileSdkVersion 'Google Inc.:Google APIs:23'
+    buildToolsVersion '23.0.2'
+
+    defaultConfig {
+        minSdkVersion 10
+        targetSdkVersion 23
+    }
+
+    signingConfigs {
+        release
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+        }
+    }
+
+    sourceSets {
+        main {
+            manifest.srcFile 'AndroidManifest.xml'
+            java.srcDirs = ['src']
+            res.srcDirs = ['res']
+        }
+    }
+}
+
+// These values are all set in my global gradle.properties file
+if (project.hasProperty('storeFile') && project.hasProperty('storePassword') && project.hasProperty('keyAlias') && project.hasProperty('keyPassword')) {
+    android.signingConfigs.release.storeFile = file(storeFile)
+    android.signingConfigs.release.storePassword = storePassword
+    android.signingConfigs.release.keyAlias = keyAlias
+    android.signingConfigs.release.keyPassword = keyPassword
+} else {
+    android.buildTypes.release.signingConfig = null
+}
