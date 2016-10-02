@@ -14,3 +14,5 @@ Kristian Lauszus, TKJ Electronics 2012
 Blog by Miguel:
 http://allaboutee.com/2011/12/31/arduino-adk-board-blink-an-led-with-your-phone-code-and-explanation/
 
+Icon by:
+Arduino Board by Victor Bolivar from the Noun Project
