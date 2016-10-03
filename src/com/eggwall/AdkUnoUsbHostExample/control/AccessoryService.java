@@ -41,6 +41,12 @@ import com.eggwall.AdkUnoUsbHostExample.network.ServerThread;
  * </p>
  */
 public class AccessoryService extends Service {
+    /** Broadcast signifying message received */
+    public static final String BROADCAST_MESSAGE = "Accessory.Message";
+    public static final String BROADCAST_MESSAGE_EXTRA = "Accessory.Message.bytes";
+    /** Broadcast signifying connectivity change received */
+    public static final String BROADCAST_CONNECTIVITY = "Accessory.Message";
+    public static final String BROADCAST_CONNECTIVITY_EXTRA = "Accessory.Message.status";
     private static final String TAG = "AccessoryService";
     /** The namespace of our application, used for qualifying local messages. */
     private static String NAMESPACE = "com.eggwall.AdkUnoUsbHostExample";
@@ -108,6 +114,38 @@ public class AccessoryService extends Service {
         return START_NOT_STICKY;
     }
 
+    @Override
+    public void onDestroy() {
+        mControl.closeAccessory();
+        super.onDestroy();
+    }
+
+    DeviceListener mListener = null;
+    /**
+     * An example listener.  This listens to messages to print out the message received.  It also
+     * updates connectivity status on the UI.  If these callbacks were not modifying the UI, you wouldn't
+     * need to run on UI thread.
+     */
+    class DeviceListener implements AccessoryControl.ConnectedListener{
+        DeviceListener() {
+        }
+
+        @Override
+        public void onConnectionChange(final boolean connectionStatus) {
+            final Intent i = new Intent(BROADCAST_CONNECTIVITY);
+            i.putExtra(BROADCAST_CONNECTIVITY_EXTRA, connectionStatus);
+            sendBroadcast(i);
+        }
+
+        @Override
+        public void onMessageReceived(final byte[] message) {
+            final Intent i = new Intent(BROADCAST_MESSAGE);
+            i.putExtra(BROADCAST_MESSAGE_EXTRA, message);
+            sendBroadcast(i);
+        }
+    }
+
+
     /**
      * Handle the request from the UI.  You can modify this method to account for what your UI is asking
      * to do, and translate this into accessory control messages, if needed.
@@ -144,6 +182,8 @@ public class AccessoryService extends Service {
             mNetwork = new ServerThread(this, PORT);
             mNetwork.start();
         }
+        mListener = new DeviceListener();
+        mControl.registerConnectedListener(mListener);
     }
 
     void removeNotificationAndStop() {
@@ -188,7 +228,7 @@ public class AccessoryService extends Service {
      * @param b
      */
     public void handleData(byte b) {
-
+        mControl.sendMessage(b);
     }
 
     public void handleError(String message) {

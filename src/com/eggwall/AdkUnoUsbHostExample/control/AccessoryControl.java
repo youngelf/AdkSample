@@ -115,13 +115,6 @@ public class AccessoryControl {
             }
         };
         mContext.registerReceiver(mUsbReceiver, filter);
-    }
-
-    public void onResume() {
-        if (mAccessory != null) {
-            setConnectionStatus(true);
-            return;
-        }
 
         UsbAccessory[] accessories = mUsbManager.getAccessoryList();
         UsbAccessory accessory = (accessories == null ? null : accessories[0]);
@@ -142,6 +135,7 @@ public class AccessoryControl {
             if (D)
                 Log.d(TAG, "mAccessory is null");
         }
+        setConnectionStatus(true);
     }
 
     /** Returns true if a USB accessory is currently connected. */

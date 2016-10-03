@@ -1,11 +1,17 @@
 package com.eggwall.AdkUnoUsbHostExample;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 import com.eggwall.AdkUnoUsbHostExample.control.AccessoryControl;
+import com.eggwall.AdkUnoUsbHostExample.control.AccessoryService;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -40,47 +46,22 @@ import java.nio.ByteOrder;
 public class AccessoryActivity extends Activity {
     TextView mConnectionStatusView;
     TextView mResultView;
-    AccessoryControl mControl;
-    DeviceListener mListener = null;
+
+    private BroadcastReceiver mReceiver = null;
 
     /**
-     * An example listener.  This listens to messages to print out the message received.  It also
-     * updates connectivity status on the UI.  If these callbacks were not modifying the UI, you wouldn't
-     * need to run on UI thread.
+     * Send a command to the service that controls the accessory.
+     * @param command
      */
-    class DeviceListener implements AccessoryControl.ConnectedListener{
-        final Activity mActivity;
-
-        DeviceListener(Activity mActivity) {
-            this.mActivity = mActivity;
-        }
-
-        @Override
-        public void onConnectionChange(final boolean connectionStatus) {
-            // Switch back to the UI thread to modify the UI.
-            mActivity.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    setConnectionStatus(connectionStatus);
-                }
-            });
-        }
-
-        @Override
-        public void onMessageReceived(final byte[] message) {
-            // Switch back to the UI thread to modify the UI.
-            mActivity.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    receiveMessage(message);
-                }
-            });
-        }
+    private void startServiceWithCommand(int command) {
+        Intent s = new Intent(this, AccessoryService.class);
+        s.putExtra(AccessoryService.REQUEST_EXTRA_NAME, command);
+        startService(s);
     }
 
     private void receiveMessage(byte[] message) {
-            long timer = ByteBuffer.wrap(message).order(ByteOrder.LITTLE_ENDIAN).getInt();
-            mResultView.setText(Long.toString(timer));
+        long timer = ByteBuffer.wrap(message).order(ByteOrder.LITTLE_ENDIAN).getInt();
+        mResultView.setText(Long.toString(timer));
     }
 
     @Override
@@ -89,28 +70,56 @@ public class AccessoryActivity extends Activity {
         setContentView(R.layout.main);
         mConnectionStatusView = (TextView) findViewById(R.id.connectionStatus);
         mResultView = (TextView) findViewById(R.id.resultView);
-        mControl = new AccessoryControl(this);
-        mControl.onCreate();
-        mListener = new DeviceListener(this);
-        mControl.registerConnectedListener(mListener);
+
+        // Start a service
+        startServiceWithCommand(AccessoryService.REQUEST_START);
+
+        mReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (TextUtils.equals(intent.getAction(), AccessoryService.BROADCAST_CONNECTIVITY)) {
+                    // Connectivity change received.
+                    final boolean connectionStatus = intent.getBooleanExtra(AccessoryService.BROADCAST_CONNECTIVITY_EXTRA, false);
+                    // Switch back to the UI thread to modify the UI.
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            setConnectionStatus(connectionStatus);
+                        }
+                    });
+                } else if (TextUtils.equals(intent.getAction(), AccessoryService.BROADCAST_MESSAGE)) {
+                    // Message received
+                    final byte[] message = intent.getByteArrayExtra(AccessoryService.BROADCAST_MESSAGE_EXTRA);
+                    // Switch back to the UI thread to modify the UI.
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            receiveMessage(message);
+                        }
+                    });
+                }
+            }
+        };
+        // Register our receiver
+        IntentFilter i = new IntentFilter(AccessoryService.BROADCAST_CONNECTIVITY);
+        registerReceiver(mReceiver, i);
+        i = new IntentFilter(AccessoryService.BROADCAST_MESSAGE);
+        registerReceiver(mReceiver, i);
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
-        mControl.onResume();
+    protected void onDestroy() {
+        if (mReceiver != null) {
+            unregisterReceiver(mReceiver);
+            mReceiver = null;
+        }
+        super.onDestroy();
     }
 
     @Override
     public void onBackPressed() {
         // Kill this activity.
         finish();
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        mControl.closeAccessory();
     }
 
     private void setConnectionStatus(boolean connected) {
@@ -123,8 +132,9 @@ public class AccessoryActivity extends Activity {
      * @param v the view element that was tapped.
      */
     public void blinkLED(View v) {
-        byte buffer = (byte) ((((ToggleButton) v).isChecked()) ? 1 : 0);
-        mControl.sendMessage(buffer);
+        int command = (byte) ((((ToggleButton) v).isChecked()) ?
+                AccessoryService.REQUEST_LED_OFF : AccessoryService.REQUEST_LED_ON);
+        startServiceWithCommand(command);
     }
 
 }
